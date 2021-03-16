@@ -59,7 +59,7 @@ async 异步模式
             await robot.lift.set_height(1, duration=2)
             await robot.head.set_angle(20, duration=2)
 
-    asyncio.run(main())
+    asyncio.get_event_loop().run_until_complete(main())
 
 除了开发 animation，你应该不需要用到这个模式 :)
 
