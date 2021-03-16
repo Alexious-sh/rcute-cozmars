@@ -148,7 +148,7 @@ class AioRobot:
     async def connect(self):
         """ """
         if not self._connected:
-            self._lo = asyncio.get_running_loop()
+            self._lo = asyncio.get_event_loop()
             if not hasattr(self, '_event_thread'):
                 self._event_thread = threading.current_thread()
             if not hasattr(self, '_host'):
@@ -161,8 +161,8 @@ class AioRobot:
             self._rpc = RPCClient(self._ws)
             self._about = json.loads(await self._get('/about'))
             await self._env.load()
-            self._eye_anim_task = asyncio.create_task(self._eye_anim.animate(self))
-            self._event_task = asyncio.create_task(self._get_event())
+            self._eye_anim_task = asyncio.get_event_loop().create_task(self._eye_anim.animate(self))
+            self._event_task = asyncio.get_event_loop().create_task(self._get_event())
             self._connected = True
 
     @property

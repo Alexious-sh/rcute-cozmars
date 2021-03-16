@@ -24,7 +24,7 @@ class Head(util.Component):
 
     def _reset_relax_timeout(self):
         if self.auto_relax_delay:
-            self._relax_timeout = asyncio.create_task(self._relax_timeout_coro())
+            self._relax_timeout = asyncio.get_event_loop().create_task(self._relax_timeout_coro())
 
     @property
     def max_angle(self):

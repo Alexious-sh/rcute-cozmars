@@ -58,7 +58,7 @@ class AioCube:
     async def connect(self):
         """ """
         if not self._connected:
-            self._lo = asyncio.get_running_loop()
+            self._lo = asyncio.get_event_loop()
             if not hasattr(self, '_event_thread'):
                 self._event_thread = threading.current_thread()
             if not hasattr(self, '_host'):
@@ -70,7 +70,7 @@ class AioCube:
                 raise RuntimeError("""Cannot connect to cube, please close other programs that are connecting cube""")
             self._rpc = RPCClient(self._ws)
             self._about = json.loads(await self._get('/about'))
-            self._event_task = asyncio.create_task(self._get_event())
+            self._event_task = asyncio.get_event_loop().create_task(self._get_event())
             self._connected = True
 
     async def _call_callback(self, cb, *args):

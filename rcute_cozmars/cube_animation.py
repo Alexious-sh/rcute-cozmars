@@ -24,7 +24,7 @@ def exe(rec, image, id_filter, win):
 
 async def detect_and_imshow(cam_buf, rec, id_filter, win=None):
     image = await cam_buf.read()
-    return await asyncio.get_running_loop().run_in_executor(None, exe, rec, image, id_filter, win)
+    return await asyncio.get_event_loop().run_in_executor(None, exe, rec, image, id_filter, win)
 
 async def search_for_cube(robot, cam_buf=None, clockwise=True, reverse=2, rec=None, id_filter=cube_id, show_view=False):
     rec = rec or ArucoDetector()

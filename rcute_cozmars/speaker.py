@@ -40,7 +40,7 @@ class Speaker(util.InputStreamComponent, soundmixin):
         vol = kw.get('volume', None)
         bs = int(bd * sr)
         if isinstance(src, str) or hasattr(src, 'read'): # for file-like obj
-            sr, dt, bs, src = await asyncio.get_running_loop().run_in_executor(None, file_sr_bs_gen, src, sr, dt, bd)
+            sr, dt, bs, src = await asyncio.get_event_loop().run_in_executor(None, file_sr_bs_gen, src, sr, dt, bd)
 
         elif isinstance(src, np.ndarray):
             dt, src = np_gen(src, dt, bs)
@@ -109,7 +109,7 @@ class Speaker(util.InputStreamComponent, soundmixin):
             sr = 22050
         else:
             sr = 16000
-        aud = await asyncio.get_running_loop().run_in_executor(None, tone2audio, tones, 60000.0/tempo, fade, sr)
+        aud = await asyncio.get_event_loop().run_in_executor(None, tone2audio, tones, 60000.0/tempo, fade, sr)
         await self.play(aud.raw_data+ b'\x00'*int(sr*.1), repeat=repeat, sample_rate=sr, dtype='int16')
 
 
