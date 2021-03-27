@@ -1,6 +1,4 @@
 aiohttp
-opencv-python
-opencv-contrib-python
 numpy
 pydub
 soundfile
