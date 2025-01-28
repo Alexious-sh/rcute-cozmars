@@ -5,7 +5,7 @@ class LED(util.Component):
 
     def __init__(self, robot):
         util.Component.__init__(self, robot)
-        self.default_fade_speed = 1
+        self.default_fade_speed = None
         """The default fade speed when setting :data:`brightness`, the default is 1/s. If set to `None`, there will be no fade effect"""
 
     def _light_rpc(self):
@@ -13,12 +13,12 @@ class LED(util.Component):
 
     @property
     def max_brightness(self):
-        """ `1.0`, read only """
+        """1.0, read only """
         return 1.0
 
     @property
     def min_brightness(self):
-        """Minimum brightness, `0.0`, that is, totally dark, read only"""
+        """Minimum brightness, 0, that is, totally dark, read only"""
         return .0
 
     @util.mode(property_type='setter')
@@ -28,7 +28,7 @@ class LED(util.Component):
         if args:
             await self._light_rpc()(args[0], None, self.default_fade_speed)
         else:
-            return round(await self._light_rpc()(), 2)
+            return await self._light_rpc()()
 
     @util.mode(force_sync=False)
     async def set_brightness(self, brightness, *, fade_duration=None, fade_speed=None):

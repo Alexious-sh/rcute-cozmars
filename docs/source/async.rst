@@ -12,7 +12,7 @@ concurrent 异步模式
 
     from rcute_cozmars import Robot
 
-        with Robot('0a3c') as robot:
+        with Robot('xxxx') as robot:
             robot.lift.set_height(1, duration=2)
             robot.head.set_angle(20, duration=2)
 
@@ -24,7 +24,7 @@ concurrent 异步模式
 
     from rcute_cozmars import AsyncRobot
 
-        with AsyncRobot('0a3c') as robot:
+        with AsyncRobot('xxxx') as robot:
             robot.lift.set_height(1, duration=2) # 不等指令执行完毕就立刻执行下一条指令
             robot.head.set_angle(20, duration=2)
 
@@ -40,7 +40,7 @@ concurrent 异步模式
 
     from rcute_cozmars import AsyncRobot
 
-        with AsyncRobot('0a3c') as robot:
+        with AsyncRobot('xxxx') as robot:
             robot.lift.set_height(1, duration=2).result() # 等待指令执行完毕再接着执行下一条指令
             robot.head.set_angle(20, duration=2).result() # 这样就和原来效果一样的，用时 4 秒
 
@@ -55,7 +55,7 @@ async 异步模式
     import asyncio
 
     async def main():
-        async with AioRobot('0a3c') as robot:
+        async with AioRobot('xxxx') as robot:
             await robot.lift.set_height(1, duration=2)
             await robot.head.set_angle(20, duration=2)
 
@@ -69,10 +69,10 @@ async 异步模式
 
     比如一条抬头的指令还未执行完，就立刻执行另一条低头的指令，这可能会损坏舵机
 
+..
+    .. note::
 
-.. note::
-
-    对应地，魔方也同样有三个类 :data:`Cube` , :data:`AsyncCube` 和 :data:`AioCube` 分别实现三种不同的控制方式
+        对应地，魔方也同样有三个类 :data:`Cube` , :data:`AsyncCube` 和 :data:`AioCube` 分别实现三种不同的控制方式
 
 .. seealso::
 

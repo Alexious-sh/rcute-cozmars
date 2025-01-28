@@ -26,7 +26,7 @@ import io
 import functools
 import wave
 from wsmprpc import RPCClient, RPCStream
-from . import util, env, screen, camera, microphone, button, sonar, infrared, lift, head, buzzer, speaker, motor, eye_animation
+from . import util, env, screen, camera, microphone, touch_sensor, sonar, light, ir_sensor, lift, head, speaker, motor, eye_animation
 from .animation import animations
 from .util import logger
 
@@ -45,14 +45,14 @@ class AioRobot:
         self._screen = screen.Screen(self)
         self._camera = camera.Camera(self)
         self._microphone = microphone.Microphone(self)
-        self._button = button.Button(self)
+        self._touch_sensor = touch_sensor.TouchSensor(self)
         self._sonar = sonar.Sonar(self)
-        self._infrared = infrared.Infrared(self)
+        self._ir_sensors = ir_sensor.IRSensors(self)
         self._lift = lift.Lift(self)
         self._head = head.Head(self)
-        self._buzzer = buzzer.Buzzer(self)
         self._speaker = speaker.Speaker(self)
-        self._motor = motor.Motor(self)
+        self._lights = light.Lights(self)
+        self._motors = motor.Motors(self)
         self._eye_anim = eye_animation.EyeAnimation(self)
         self.on_camera_image = None
         """Callback funciton. After :meth:`show_camera_view` is called, :data:`on_camera_image` will be called every time camera feed receives an new image. The callback must take the captured image as input and return processd image."""
@@ -87,14 +87,14 @@ class AioRobot:
         return self._env
 
     @property
-    def button(self):
+    def touch_sensor(self):
         """ """
-        return self._button
+        return self._touch_sensor
 
     @property
-    def infrared(self):
-        """Infrared sensor at the bottom of the robot"""
-        return self._infrared
+    def ir_sensors(self):
+        """Infrared sensors at the bottom of the robot"""
+        return self._ir_sensors
 
     @property
     def sonar(self):
@@ -102,9 +102,14 @@ class AioRobot:
         return self._sonar
 
     @property
-    def motor(self):
+    def lights(self):
+        """Builtin RGB LEDs on the sonar module"""
+        return self._lights
+
+    @property
+    def motors(self):
         """ """
-        return self._motor
+        return self._motors
 
     @property
     def head(self):
@@ -117,17 +122,8 @@ class AioRobot:
         return self._lift
 
     @property
-    def buzzer(self):
-        """only for Cozmars V1"""
-        if self.firmware_version.startswith('2'):
-            raise AttributeError('Cozmars V2 has no buzzer')
-        return self._buzzer
-
-    @property
     def speaker(self):
-        """only for Cozmars V2"""
-        if self.firmware_version.startswith('1'):
-            raise AttributeError('Cozmars V1 has no speaker')
+        """ """
         return self._speaker
 
     @property
@@ -153,8 +149,8 @@ class AioRobot:
                 self._event_thread = threading.current_thread()
             if not hasattr(self, '_host'):
                 found = await util.find_service('rcute-cozmars-????', '_ws._tcp.local.')
-                assert len(found)==1, "More than one cozmars found." if found else "No cozmars found."
-                self._host = found[0].server
+                assert len(found)==1, f"More than one cozmars found {[a.server.split('-')[-1].split('.')[0] for a in found]}." if found else "No cozmars found."
+                self._host = found[0].server[:-1]
             self._ws = await websockets.connect(f'ws://{self._host}/rpc')
             if '-1' == await self._ws.recv():
                 raise RuntimeError('Could not connect to Cozmars, please close other programs that are already connected to Cozmars')
@@ -183,27 +179,30 @@ class AioRobot:
             try:
                 if event == 'pressed':
                     if not data:
-                        self.button._long_pressed = self.button._double_pressed = False
-                    self.button._pressed = data
-                    await self._call_callback(self.button.when_pressed if data else self.button.when_released)
+                        self.touch_sensor._long_touched = self.touch_sensor._double_touched = False
+                    self.touch_sensor._touched = data
+                    await self._call_callback(self.touch_sensor.when_touched if data else self.touch_sensor.when_released)
                 elif event == 'long_pressed':
-                    self.button._long_pressed = data
-                    await self._call_callback(self.button.when_long_pressed)
+                    self.touch_sensor._long_touched = data
+                    await self._call_callback(self.touch_sensor.when_long_touched)
                 elif event == 'double_pressed':
-                    self.button._pressed = data
-                    self.button._double_pressed = data
-                    await self._call_callback(self.button.when_pressed)
-                    await self._call_callback(self.button.when_double_pressed)
+                    self.touch_sensor._touched = data
+                    self.touch_sensor._double_touched = data
+                    await self._call_callback(self.touch_sensor.when_touched)
+                    await self._call_callback(self.touch_sensor.when_double_touched)
                 elif event == 'out_of_range':
                     await self._call_callback(self.sonar.when_out_of_range, data)
                 elif event == 'in_range':
                     await self._call_callback(self.sonar.when_in_range, data)
                 elif event == 'lir':
-                    self.infrared._state = data, self.infrared._state[1]
-                    await self._call_callback(self.infrared.when_state_changed, self.infrared._state)
+                    self._ir_sensors._state[0] = data
+                    await self._call_callback(self._ir_sensors.when_state_changed, self._ir_sensors._state)
                 elif event == 'rir':
-                    self.infrared._state = self.infrared._state[0], data
-                    await self._call_callback(self.infrared.when_state_changed, self.infrared._state)
+                    self._ir_sensors._state[2] = data
+                    await self._call_callback(self._ir_sensors.when_state_changed, self._ir_sensors._state)
+                elif event == 'mir':
+                    self._ir_sensors._state[1] = data
+                    await self._call_callback(self._ir_sensors.when_state_changed, self._ir_sensors._state)
             except Exception as e:
                 logger.exception(e)
 
@@ -306,12 +305,18 @@ class AioRobot:
         See `rcute_ai.WakeWordDetector <https://rcute-ai.readthedocs.io/zh_CN/latest/api/WakeWordDetector.html>`_"""
         if not args:
             return getattr(self, '_when_called', None)
-        cb = self._when_called = args[0]
+        cb = args[0]
+        if cb is None or getattr(self, '_wwd_thread', None):
+            self._when_called = None
+            getattr(self, '_wwd', None) and self._wwd.cancel()
+            getattr(self, '_wwd_thread', None) and self._wwd_thread.is_alive() and await self._lo.run_in_executor(None, self._wwd_thread.join)
+            self._wwd_thread = None
         if cb:
+            self._when_called = cb
             def wwd_run():
                 if not hasattr(self, '_wwd'):
                     import rcute_ai as ai
-                    self._wwd = ai.WakeWordDetection()
+                    self._wwd = ai.WakeWordDetector()
                 logger.info('Start wake word detection.')
                 with self.microphone.get_buffer() as buf:
                     while self._when_called:
@@ -319,9 +324,6 @@ class AioRobot:
                 logger.info('Stop wake word detection.')
             self._wwd_thread = threading.Thread(target=wwd_run, daemon=True)
             self._wwd_thread.start()
-        else:
-            hasattr(self, '_wwd') and self._wwd.cancel()
-            hasattr(self, '_wwd_thread') and self._wwd_thread.is_alive() and await self._lo.run_in_executor(None, self._wwd_thread.join)
 
     @util.mode()
     async def listen(self, **kw):
